@@ -29,5 +29,3 @@ head(clean_data_F)
 # filter missing and refused
 
 ```
-
-According to the previous article, participants who scored 10 or more were considered to have clinically significant depressive symptoms (Jackson et al., 2019)
