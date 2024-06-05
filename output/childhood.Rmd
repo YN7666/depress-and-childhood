@@ -11,13 +11,14 @@ output:
 #needed questionnaires
 #install.packages("haven")
 #install.packages("nhanesA")
+library(nhanesA)
 library(haven)
 library(tidyverse)
 #library(nhanesA)
-depress <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/DPQ_J.XPT")
-#depress <- nhanes("DPQ_J")
-child <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/ECQ_J.XPT")
-#depress <- nhanes("ECQ_J")
+#depress <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/DPQ_J.XPT")
+depress <- nhanes("DPQ_J")
+#child <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/ECQ_J.XPT")
+child <- nhanes("ECQ_J")
 ```
 
 ```{r}
