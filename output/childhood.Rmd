@@ -1,0 +1,33 @@
+---
+title: " Is there an association between early childhood adversity and higher depression scores in US adults?"
+author: "Vincent Yu"
+date: "2024-6-18"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r}
+#needed questionnaires
+#install.packages("haven")
+#install.packages("nhanesA")
+library(haven)
+library(tidyverse)
+#library(nhanesA)
+depress <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/DPQ_J.XPT")
+#depress <- nhanes("DPQ_J")
+child <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/ECQ_J.XPT")
+#depress <- nhanes("ECQ_J")
+```
+
+```{r}
+# merge 2 datasets
+clean_data_T <- merge(depress, child, by = "SEQN", all.x =T, all.y =T)
+clean_data_F <- merge(depress, child, by = "SEQN", all=FALSE)
+head(clean_data_T)
+head(clean_data_F)
+# filter missing and refused
+
+```
+
+According to the previous article, participants who scored 10 or more were considered to have clinically significant depressive symptoms (Jackson et al., 2019)
