@@ -5,28 +5,68 @@ date: "2024-6-18"
 output:
   pdf_document:
     latex_engine: xelatex
+always_allow_html: true
 ---
 
 ```{r}
 #needed questionnaires
 #install.packages("haven")
 #install.packages("nhanesA")
+#install.packages("tableone")
 library(nhanesA)
 library(haven)
 library(tidyverse)
-#library(nhanesA)
+library(tableone)
+library(dplyr)
+library(tableone)
+library(kableExtra)
 #depress <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/DPQ_J.XPT")
+demo <- nhanes("DEMO_J")
 depress <- nhanes("DPQ_J")
 #child <- read_xpt("D:/_uoft_1/5硕士1/depress-and-childhood/data/ECQ_J.XPT")
 child <- nhanes("ECQ_J")
+BMI <- nhanes("BMX_J")
 ```
 
 ```{r}
 # merge 2 datasets
-clean_data_T <- merge(depress, child, by = "SEQN", all.x =T, all.y =T)
-clean_data_F <- merge(depress, child, by = "SEQN", all=FALSE)
-head(clean_data_T)
-head(clean_data_F)
+clean_data <- merge(demo, depress,by = "SEQN", all.x =T)
+clean_data_T <- merge(clean_data, child, by = "SEQN", all.x =T)
+clean_data_T <- merge(clean_data_T, BMI, by = "SEQN", all.x =T)
 # filter missing and refused
 
 ```
+
+#filter missing value still error: ModuleStopIfNoVarsLeft(vars): No valid variables.
+```{r, warning=FALSE}
+demo_clean <- clean_data_T %>% select("SEQN","RIDAGEYR","DMDHRGND","RIDRETH1","ECD070A","ECD010","ECQ020", "DMDMARTL","BMXBMI","MCQ080E") 
+colnames(demo_clean) <- c("SEQN","Age", "Gender", "Race","birth_weight","maternal_age","Maternal_smoking", "Marital_status", "BMI", "adverse health outcomes in the next generation")
+# Define variables, factorVars for categorical variable
+vars <- c("Age", "Gender", "Race","birth_weight","maternal_age","Maternal_smoking", "Marital_status", "BMI", "adverse health outcomes in the next generation")
+factorVars <- c("Gender", "Race", "Maternal_Smoking", "Marital_Status")
+table1 <- CreateTableOne(vars = vars, data = demo_clean, factorVars = factorVars)
+
+
+# Convert to data frame for stargazer
+table1_df <- as.data.frame(print(table1, printToggle = FALSE))
+# Display the table in R
+kable(table1_df, caption = "Demographics")
+```
+```{r}
+model1 <- glm(Depression ~ Maternal_smoking + Age + Gender + Race + birth_weight + maternal_age + Marital_status + BMI + adverse_health_outcomes_next_generation, data = demo_clean, family = binomial)
+
+# Summary of the model
+summary(model1)
+```
+
+```{r}
+clean_data_F <- merge(depress, BMI, by = "SEQN", all.x =F, all.y =F)
+clean_data_FF <- merge(depress, child, by = "SEQN", all.x =F, all.y =F)
+```
+
+
+
+
+
+
+
