@@ -1,0 +1,227 @@
+---
+title: "Untitled"
+output: pdf_document
+date: "2024-11-14"
+---
+
+
+
+```{r}
+  library(mvtnorm)
+
+########################################
+###Type I error control under same endpoint ####
+########################################
+
+### The function below evaluates Equation (2) for a given m####
+  mf0<-function(alphastar, alphat, t, m, k){
+#sets up correlation matrix under the 3 sample size adjustment strategies#
+    test1<-matrix(0, ncol=m+1, nrow=m+1) # D1 
+    test2<-matrix(0, ncol=m+1, nrow=m+1) # D2
+    test3<-matrix(0, ncol=m+1, nrow=m+1) # D3
+
+    low<-rep(qnorm(1-alphat), m+1)
+    low[m+1]<-qnorm(1-alphastar)
+    up<-rep(Inf, m+1)
+    #？
+    diag(test1)<-1; diag(test2)<-1; diag(test3)<-1;
+    for(i in 1:m){
+      test1[i, m+1] <- test1[m+1, i] <- sqrt(t/m)
+      test2[i, m+1] <- test2[m+1, i] <- sqrt(t/k)
+      test3[i, m+1] <- test3[m+1, i] <- sqrt(t/(k*(1-t)+m*t))
+    }
+#calculates the probabilities#
+    temp1<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test1)[1]
+    temp2<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test2)[1]
+    temp3<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test3)[1]
+    out=list(a=temp1, b=temp2, c=temp3)
+    return(out)
+  } 
+
+###The function below returns difference between alpha in Equation (3) and 0.025###
+  type0<-function(alphastar, alphat, t, k, d){
+    temp1<-0; 
+    for (i in 1:k) {
+      output <- mf0(alphastar, alphat, t, i,k)
+      temp1<-temp1+factorial(k)/(factorial(i)*factorial(k-i))*output[[d]]*(1-alphat)^(k-i)
+     }
+    return(temp1-0.025)
+  }
+
+### An example for alpha* calculation###
+alphastar<-uniroot(type0,c(0,1), alphat=0.4, t=0.5, k=6, d=1)$root
+
+       #######################################
+###Power calculation under same endpoint ####
+#######################################
+
+###The two functions below evaluates Equation (5)### 
+
+  mf1<-function(num, alphastar, alphat, delta, t, m, k, g){
+#sets up correlation matrix under the 3 sample size adjustment strategies#
+    test1<-matrix(0, ncol=m+1, nrow=m+1) # D1 
+    test2<-matrix(0, ncol=m+1, nrow=m+1) # D2
+    test3<-matrix(0, ncol=m+1, nrow=m+1) # D3
+    low<-rep(qnorm(1-alphat), m+1)
+    low[m+1]<-qnorm(1-alphastar)
+    up<-rep(Inf, m+1)
+    
+    diag(test1)<-1; diag(test2)<-1; diag(test3)<-1;
+    for(i in 1:m){
+      test1[i, m+1] <- test1[m+1, i] <- sqrt(t/m)
+      test2[i, m+1] <- test2[m+1, i] <- sqrt(t/k)
+      test3[i, m+1] <- test3[m+1, i] <- sqrt(t/(k*(1-t)+m*t))
+     }
+    temp1 <- 0; temp2 <- 0; temp3<-0; 
+    a <- max(0, (m+g-k)); b <- min(m,g)
+
+  # calculates the sum of probabilities over j in (5)#
+
+    for (j in a:b){
+      if (j == 0){ altmean1 <- rep(0, m+1); altmean2<-rep(0, m+1); altmean3<-rep(0, m+1) }
+      else {altmean1 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                    -log(delta)*j/m*sqrt(m*num/4))
+            altmean2 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                   -log(delta)*j/m*sqrt(k*num/4))
+            altmean3 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                 -log(delta)*j/m*sqrt((m*t+k*(1-t))*num/4))
+           }    
+      c<-factorial(g)*factorial(k-g)/(factorial(j)*factorial(g-j)*factorial(m-j)*factorial(k-g-m+j))
+      d <- pnorm(qnorm(1-alphat)+log(delta)*sqrt(num*t/4))
+      
+      temp1 <- temp1 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+     	     mean=altmean1,corr=test1)[1]
+      temp2 <- temp2 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+		     mean=altmean2,corr=test2)[1]
+      temp3 <- temp3 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+                    mean=altmean3,corr=test3)[1]
+    }
+    out=list(a=temp1, b=temp2, c=temp3)
+    return(out)
+  } 
+
+        ###The function below returns difference between power in Equation (5) and 0.9###
+  type1<-function(num, alphastar, alphat, delta, t, k, d, g){
+    temp<-0; 
+    for (m in 1:k) {
+      output <- mf1(num, alphastar, alphat,delta, t, m,k,g)
+      temp <- temp + output[[d]]
+    }
+    return(temp-0.9)
+  }
+
+###an example for study power calculation when N=20### m
+type1(20, alphastar, alphat=0.4, 0.6, t=0.5, k=6, d=1, g=4)+0.9
+###an example for event size calculation that targets 90% power###
+uniroot(type1, c(1, 4000), alphastar, alphat=0.4, delta=0.6, t=0.5, k=6, d=1, g=4)$root
+```
+```{r}
+  library(mvtnorm)
+
+########################################
+###Type I error control under same endpoint ####
+########################################
+
+### The function below evaluates Equation (2) for a given m####
+  mf0<-function(alphastar, alphat, t, m, k){
+#sets up correlation matrix under the 3 sample size adjustment strategies#
+    test1<-matrix(0, ncol=m+1, nrow=m+1) # D1 
+    test2<-matrix(0, ncol=m+1, nrow=m+1) # D2
+    test3<-matrix(0, ncol=m+1, nrow=m+1) # D3
+
+    low<-rep(qnorm(1-alphat), m+1)
+    low[m+1]<-qnorm(1-alphastar)
+    up<-rep(Inf, m+1)
+    #？
+    diag(test1)<-1; diag(test2)<-1; diag(test3)<-1;
+    for(i in 1:m){
+      test1[i, m+1] <- test1[m+1, i] <- sqrt(t/m)
+      test2[i, m+1] <- test2[m+1, i] <- sqrt(t/k)
+      test3[i, m+1] <- test3[m+1, i] <- sqrt(t/(k*(1-t)+m*t))
+    }
+#calculates the probabilities#
+    temp1<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test1)[1]
+    temp2<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test2)[1]
+    temp3<-pmvnorm(lower=low, upper=up, mean=rep(0, m+1),corr=test3)[1]
+    out=list(a=temp1, b=temp2, c=temp3)
+    return(out)
+  } 
+
+###The function below returns difference between alpha in Equation (3) and 0.025###
+  type0<-function(alphastar, alphat, t, k, d){
+    temp1<-0; 
+    for (i in 1:k) {
+      output <- mf0(alphastar, alphat, t, i,k)
+      temp1<-temp1+factorial(k)/(factorial(i)*factorial(k-i))*output[[d]]*(1-alphat)^(k-i)
+     }
+    return(temp1-0.025)
+  }
+
+# ! change
+alphastar <- uniroot(type0, c(0, 1), alphat=0.3, t=0.5, k=6, d=1)$root
+       #######################################
+###Power calculation under same endpoint ####
+#######################################
+
+###The two functions below evaluates Equation (5)### 
+
+  mf1<-function(num, alphastar, alphat, delta, t, m, k, g){
+#sets up correlation matrix under the 3 sample size adjustment strategies#
+    test1<-matrix(0, ncol=m+1, nrow=m+1) # D1 
+    test2<-matrix(0, ncol=m+1, nrow=m+1) # D2
+    test3<-matrix(0, ncol=m+1, nrow=m+1) # D3
+    low<-rep(qnorm(1-alphat), m+1)
+    low[m+1]<-qnorm(1-alphastar)
+    up<-rep(Inf, m+1)
+    
+    diag(test1)<-1; diag(test2)<-1; diag(test3)<-1;
+    for(i in 1:m){
+      test1[i, m+1] <- test1[m+1, i] <- sqrt(t/m)
+      test2[i, m+1] <- test2[m+1, i] <- sqrt(t/k)
+      test3[i, m+1] <- test3[m+1, i] <- sqrt(t/(k*(1-t)+m*t))
+     }
+    temp1 <- 0; temp2 <- 0; temp3<-0; 
+    a <- max(0, (m+g-k)); b <- min(m,g)
+
+  # calculates the sum of probabilities over j in (5)#
+
+    for (j in a:b){
+      if (j == 0){ altmean1 <- rep(0, m+1); altmean2<-rep(0, m+1); altmean3<-rep(0, m+1) }
+      else {altmean1 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                    -log(delta)*j/m*sqrt(m*num/4))
+            altmean2 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                   -log(delta)*j/m*sqrt(k*num/4))
+            altmean3 <- c(rep(-log(delta)*sqrt(num*t/4),j), rep(0,m-j), 
+                                 -log(delta)*j/m*sqrt((m*t+k*(1-t))*num/4))
+           }    
+      c<-factorial(g)*factorial(k-g)/(factorial(j)*factorial(g-j)*factorial(m-j)*factorial(k-g-m+j))
+      d <- pnorm(qnorm(1-alphat)+log(delta)*sqrt(num*t/4))
+      
+      temp1 <- temp1 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+     	     mean=altmean1,corr=test1)[1]
+      temp2 <- temp2 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+		     mean=altmean2,corr=test2)[1]
+      temp3 <- temp3 + c*d^(g-j)*(1-alphat)^(k-g-m+j)*pmvnorm(lower=low, upper=up, 
+                    mean=altmean3,corr=test3)[1]
+    }
+    out=list(a=temp1, b=temp2, c=temp3)
+    return(out)
+  } 
+
+        ###changed!
+  type1<-function(num, alphastar, alphat, delta, t, k, d, g){
+    temp<-0; 
+    for (m in 1:k) {
+      output <- mf1(num, alphastar, alphat,delta, t, m,k,g)
+      temp <- temp + output[[d]]
+    }
+    return(temp-0.8)
+  }
+
+###an example for study power calculation when N=60### m
+type1(60, alphastar, alphat=0.3, 0.6, t=0.5, k=6, d=2, g=6)+0.8
+###an example for event size calculation that targets 90% power###
+uniroot(type1, c(0.01, 200), alphastar, alphat=0.3, delta=0.6, t=0.5, k=6, d=2, g=6)$root
+```
+
+
